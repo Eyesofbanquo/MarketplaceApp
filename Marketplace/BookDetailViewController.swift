@@ -10,6 +10,7 @@ import UIKit
 
 class BookDetailViewController: UIViewController {
     
+    @IBOutlet weak var _bookImage: UIImageView!
     //var searchResultsView:SearchResultsTableViewController!
     var selectedBook:Book!
     var bookTitle:String!
@@ -18,6 +19,8 @@ class BookDetailViewController: UIViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         
+        self.navigationController?.topViewController!.title = self.bookTitle
+        
         let searchResultsView = (self.navigationController?.viewControllers[1] as? SearchResultsTableViewController)
         guard let searchResultsSize = searchResultsView?.searchResults.count else { return }
         for i in 0..<searchResultsSize {
@@ -25,13 +28,9 @@ class BookDetailViewController: UIViewController {
                 self.selectedBook = searchResultsView?.searchResults[i]
             }
         }
-        /*if let searchResultsSize = searchResultsView?.searchResults.count {
-            for i in 0..<searchResultsSize {
-                if searchResultsView?.searchResults[i]._title == bookTitle {
-                    self.selectedBook = searchResultsView?.searchResults[i]
-                }
-            }
-        }*/
+        
+        self._bookImage.image = self.selectedBook.Image()
+        
 
         // Do any additional setup after loading the view.
     }

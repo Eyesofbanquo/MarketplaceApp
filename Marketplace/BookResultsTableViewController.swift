@@ -153,15 +153,31 @@ class BookResultsTableViewController: UITableViewController {
     }
     */
 
-    /*
+    
     // MARK: - Navigation
 
     // In a storyboard-based application, you will often want to do a little preparation before navigation
     override func prepareForSegue(segue: UIStoryboardSegue, sender: AnyObject?) {
         // Get the new view controller using segue.destinationViewController.
         // Pass the selected object to the new view controller.
+        if segue.identifier == "to_BookDetailViewController"{
+            let destination = segue.destinationViewController as! BookDetailViewController
+            //let destination = nav.topViewController as! BookResultsTableViewController
+            if let cell = sender as? UITableViewCell{
+                if let indexPath = tableView.indexPathForCell(cell){
+                    destination.bookTitle = self.bookTitle
+                    //let selected_book_link = self.searchResults[indexPath.row]._link!
+                    //let selected_book_title = self.searchResults[indexPath.row]._title!
+                    //destination.bookLink = selected_book_link
+                    //destination.bookTitle = selected_book_title
+                }
+                
+            }
+            
+            //let link = self.searchResults[indexPath.row]
+        }
     }
-    */
+    
 
 }
 
@@ -182,6 +198,7 @@ extension BookResultsTableViewController {
         /*if (sender as! UISwitch).enabled {
             self.tableView.reloadData()
         }*/
+        NSNotificationCenter.defaultCenter().postNotificationName("availability", object: self)
         self._hpbSelectSwitch.enabled = !self._hpbSelectSwitch.enabled
         self.tableView.reloadData()
     }
@@ -251,7 +268,9 @@ extension BookResultsTableViewController {
                         break
                     }
                     
-                    
+                    if i == dictionary.count - 1 {
+                        NSNotificationCenter.defaultCenter().postNotificationName("loading", object: self)
+                    }
                     self.tableView.reloadData()
                     
                 }

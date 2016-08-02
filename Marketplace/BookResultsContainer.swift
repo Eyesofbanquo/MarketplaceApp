@@ -13,6 +13,7 @@ class BookResultsContainer: UIViewController {
 
     @IBOutlet weak var _bookTypeSegmentedControl: UISegmentedControl!
     
+    @IBOutlet weak var _loadingView: UIView!
     @IBOutlet weak var _unavailableText: UILabel!
     var bookLink:String!
     var bookTitle:String!
@@ -42,10 +43,14 @@ class BookResultsContainer: UIViewController {
             self.bookResultsTableViewController.bookTitle = self.bookTitle
             self.bookResultsTableViewController.loadSearchData("hardcover")
             NSNotificationCenter.defaultCenter().addObserver(self, selector: #selector(self.checkAvailability), name: "availability", object: nil)
-            //self.checkAvailability()
+            NSNotificationCenter.defaultCenter().addObserver(self, selector: #selector(self.loadingView), name: "loading", object: nil)
             self.bookResultsTableViewController._bookTypeSegmentedControl = self._bookTypeSegmentedControl
                 
             }
+    }
+    
+    func loadingView(){
+        self._loadingView.hidden = true
     }
     
     func checkAvailability(){
@@ -56,17 +61,6 @@ class BookResultsContainer: UIViewController {
             self._unavailableView.hidden = true
         }
     }
-    
-
-    /*
-    // MARK: - Navigation
-
-    // In a storyboard-based application, you will often want to do a little preparation before navigation
-    override func prepareForSegue(segue: UIStoryboardSegue, sender: AnyObject?) {
-        // Get the new view controller using segue.destinationViewController.
-        // Pass the selected object to the new view controller.
-    }
-    */
 
 }
 
@@ -74,10 +68,13 @@ extension BookResultsContainer {
     
     @IBAction func refreshTable(sender: AnyObject) {
         
+        self._loadingView.hidden = false
+        
         switch (sender as! UISegmentedControl).selectedSegmentIndex {
         case 0:
             if self.bookResultsTableViewController.hardcoverSearchResults.count == 0 {
                 self.bookType = "hardcover"
+                //self._loadingView.hidden = false
                 self.bookResultsTableViewController.loadSearchData("hardcover")
                 
             }
@@ -85,6 +82,7 @@ extension BookResultsContainer {
         case 1:
             if self.bookResultsTableViewController.paperbackSearchResults.count == 0 {
                 self.bookType = "paperback"
+                //self._loadingView.hidden = false
                 self.bookResultsTableViewController.loadSearchData("paperback")
             }
             break
