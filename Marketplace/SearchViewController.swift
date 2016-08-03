@@ -14,6 +14,7 @@
 import UIKit
 import Alamofire
 import CoreLocation
+import SWXMLHash
 
 class SearchViewController: UIViewController, CLLocationManagerDelegate, UISearchBarDelegate, UITableViewDelegate, UITableViewDataSource {
     
@@ -27,9 +28,27 @@ class SearchViewController: UIViewController, CLLocationManagerDelegate, UISearc
     let locationManager = CLLocationManager()
     var searchResults:[String] = []
     var searching:Bool!
+    var api_key = ""
 
     override func viewDidLoad() {
         super.viewDidLoad()
+        
+        let tap: UITapGestureRecognizer = UITapGestureRecognizer(target: self, action: #selector(SearchViewController.dismissKeyboard))
+        tap.cancelsTouchesInView = false
+        //view.addGestureRecognizer(tap)
+        
+        Alamofire.request(.GET, "https://fathomless-gorge-53738.herokuapp.com/api").responseJSON(completionHandler: {
+            response in
+            do {
+                let responseDict = try NSJSONSerialization.JSONObjectWithData(response.data!, options: []) as! Array<Dictionary<NSObject, AnyObject>>
+                self.api_key = responseDict[0]["key"] as! String
+                print(self.api_key)
+            } catch {
+                
+            }
+            
+        })
+        
         self.title = "Marketplace"
         self.searching = false
         
@@ -41,33 +60,36 @@ class SearchViewController: UIViewController, CLLocationManagerDelegate, UISearc
         //locationManager.requestWhenInUseAuthorization()
         //locationManager.startUpdatingLocation()
     
-        // Do any additional setup after loading the view.
+        // For dismissing the keyboard
+       /* NSNotificationCenter.defaultCenter().addObserver(self, selector: #selector(SearchViewController.keyboardWillShow(_:)), name:UIKeyboardWillShowNotification, object: self.view.window)
+        NSNotificationCenter.defaultCenter().addObserver(self, selector: #selector(SearchViewController.keyboardWillHide(_:)), name:UIKeyboardWillHideNotification, object: self.view.window)*/
+    }
+    
+    func keyboardWillShow(sender: NSNotification) {
+        let userInfo: [NSObject : AnyObject] = sender.userInfo!
+        let keyboardSize: CGSize = userInfo[UIKeyboardFrameBeginUserInfoKey]!.CGRectValue.size
+        let offset: CGSize = userInfo[UIKeyboardFrameEndUserInfoKey]!.CGRectValue.size
         
-        /*NSNotificationCenter.defaultCenter().addObserver(self, selector: #selector(self.keyboardWillShow(_:)), name:UIKeyboardWillShowNotification, object: nil)
-        NSNotificationCenter.defaultCenter().addObserver(self, selector: #selector(self.keyboardWillHide(_:)), name:UIKeyboardWillHideNotification, object: nil)*/
-    }
-    
-    /*func keyboardWillShow(notification: NSNotification) {
-        //To retrieve keyboard size, uncomment following line
-        //let keyboardSize = (notification.userInfo?[UIKeyboardFrameBeginUserInfoKey] as? NSValue)?.CGRectValue()
-        self._bottomConstraint.constant = 260
-        UIView.animateWithDuration(0.3) {
-            self.view.layoutIfNeeded()
+        if keyboardSize.height == offset.height {
+            UIView.animateWithDuration(0.1, animations: { () -> Void in
+                self.view.frame.origin.y -= keyboardSize.height
+            })
+        } else {
+            UIView.animateWithDuration(0.1, animations: { () -> Void in
+                self.view.frame.origin.y += keyboardSize.height - offset.height
+            })
         }
     }
     
-    func keyboardWillHide(notification: NSNotification) {
-        //To retrieve keyboard size, uncomment following line
-        //let keyboardSize = (notification.userInfo?[UIKeyboardFrameBeginUserInfoKey] as? NSValue)?.CGRectValue()
-        self._bottomConstraint.constant = 175
-        UIView.animateWithDuration(0.3) {
-            self.view.layoutIfNeeded()
-        }
-    }*/
-    
-    
+    func keyboardWillHide(sender: NSNotification) {
+        let userInfo: [NSObject : AnyObject] = sender.userInfo!
+        let keyboardSize: CGSize = userInfo[UIKeyboardFrameBeginUserInfoKey]!.CGRectValue.size
+        self.view.frame.origin.y += keyboardSize.height
+    }
+ 
+ 
     func dismissKeyboard(){
-        self._searchTextField.endEditing(true)
+        self._searchBar.endEditing(true)
 
     }
     
@@ -138,45 +160,51 @@ class SearchViewController: UIViewController, CLLocationManagerDelegate, UISearc
 //* For handling the search API with goodreads
 extension SearchViewController {
     
+    func searchBarSearchButtonClicked(searchBar: UISearchBar) {
+        self.performSegueWithIdentifier("to_SearchResultsTableViewController", sender: self)
+    }
+    
     func searchBarTextDidBeginEditing(searchBar: UISearchBar) {
         
     }
     
     func searchBarCancelButtonClicked(searchBar: UISearchBar) {
         self.searching = false
-        self.searchResults = []
+        self.dismissKeyboard()
         self._searchTableView.reloadData()
     }
     
     func searchBarTextDidEndEditing(searchBar: UISearchBar) {
-        print("done?")
+        self.dismissKeyboard()
     }
     
     func search(){
         if self._searchBar.text!.characters.count > 3{
-            self.searchResults = []
-            self._searchTableView.reloadData()
+
             self.searching = true
-            Alamofire.request(.GET, "https://fathomless-gorge-53738.herokuapp.com/quick-search", parameters: ["q":self._searchBar.text!]).responseJSON(completionHandler: {
-                response in
-                do {
-                    //if self.searching == true {
-                    let search_results_array = try NSJSONSerialization.JSONObjectWithData(response.data!, options: []) as! Array<Dictionary<NSObject, AnyObject>>
-                    //let search_results = search_results_array[0]
-                    for i in 0..<search_results_array.count {
-                        self.searchResults += [search_results_array[i]["item" ] as! String]
-                        self._searchTableView.reloadData()
-                        
-                        if i == search_results_array.count - 1 {
-                            self.searching = false
-                        }
+            
+            Alamofire.request(.GET, "https://www.goodreads.com/search/index.xml?", parameters: ["key":"Ojs0mDZl5mhGJo3hoHCeQ", "q":self._searchBar.text!]).response(completionHandler: {
+                request, response, data, error in
+                let data_string = NSString.init(data: data!, encoding: NSUTF8StringEncoding)
+                self.searchResults = []
+                self._searchTableView.reloadData()
+                let search_results_xml = SWXMLHash.parse((data_string! as String))
+                let size = search_results_xml["GoodreadsResponse"]["search"]["results"]["work"].children.count
+                /*for i in 0..<size{
+                    if i == size {
+                        break
                     }
-                    //}
-                    
-                } catch{
-                    print(error)
-                }
+                    print(search_results_xml["GoodreadsResponse"]["search"]["results"]["work"][i]["best_book"])
+                }*/
                 
+                for (_,work) in search_results_xml["GoodreadsResponse"]["search"]["results"]["work"].enumerate() {
+                    if !self.searchResults.contains((work["best_book"]["author"]["name"].element?.text!)!){
+                        self.searchResults += [(work["best_book"]["author"]["name"].element?.text!)!]
+                    }
+                    
+                    self._searchTableView.reloadData()
+                }
+
             })
         }
     }
@@ -184,19 +212,30 @@ extension SearchViewController {
     
     func searchBar(searchBar: UISearchBar, textDidChange searchText: String) {
         
-        if self.searching == false {
+        /*if self.searching == false {
             NSTimer.scheduledTimerWithTimeInterval(1.0, target: self, selector: #selector(self.search), userInfo: nil, repeats: false)
-        }
-        
-        if self.searchResults.count > 20 {
-            self.searchResults = []
-            
-        }
+        }*/
+        self.search()
+
         self._searchTableView.reloadData()
     }
 }
 
 extension SearchViewController{
+    
+    //When the user selects an item from the list make sure you set the search text to match that item
+    func tableView(tableView: UITableView, didSelectRowAtIndexPath indexPath: NSIndexPath) {
+        let cell = tableView.dequeueReusableCellWithIdentifier("search_results", forIndexPath: indexPath)
+        let text = cell.viewWithTag(1) as! UILabel
+        text.text = self.searchResults[indexPath.row]
+        self._searchBar.text! = self.searchResults[indexPath.row]
+        
+        tableView.deselectRowAtIndexPath(indexPath, animated: true)
+        tableView.reloadData()
+    }
+    
+    
+    
     func tableView(tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
         return self.searchResults.count
     }

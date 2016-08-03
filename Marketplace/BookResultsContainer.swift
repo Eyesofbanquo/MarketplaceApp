@@ -68,11 +68,12 @@ extension BookResultsContainer {
     
     @IBAction func refreshTable(sender: AnyObject) {
         
-        self._loadingView.hidden = false
+        
         
         switch (sender as! UISegmentedControl).selectedSegmentIndex {
         case 0:
             if self.bookResultsTableViewController.hardcoverSearchResults.count == 0 {
+                self._loadingView.hidden = false
                 self.bookType = "hardcover"
                 //self._loadingView.hidden = false
                 self.bookResultsTableViewController.loadSearchData("hardcover")
@@ -81,6 +82,7 @@ extension BookResultsContainer {
             break
         case 1:
             if self.bookResultsTableViewController.paperbackSearchResults.count == 0 {
+                self._loadingView.hidden = false
                 self.bookType = "paperback"
                 //self._loadingView.hidden = false
                 self.bookResultsTableViewController.loadSearchData("paperback")
