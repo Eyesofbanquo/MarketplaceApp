@@ -25,18 +25,16 @@ class BookResultsTableViewController: UITableViewController {
     var audiobookSearchResults:NSObject!
     var isCurrentlySearching:Bool!
     
+    var device_token:String = "<5a0b50fe e241aba2 4285b990 40d374e9 4ebff20e cb3fc17f b5ebed36 2ce6514b>"
+    
     override func viewDidLoad() {
         super.viewDidLoad()
         self.bookType = "hardcover"
         //self._hpbSelectSwitch.enabled = false
         //self.loadSearchData(bookType)
-        
+        //self.postSearchData(self.bookType)
 
-        // Uncomment the following line to preserve selection between presentations
-        // self.clearsSelectionOnViewWillAppear = false
-
-        // Uncomment the following line to display an Edit button in the navigation bar for this view controller.
-        // self.navigationItem.rightBarButtonItem = self.editButtonItem()
+        NSNotificationCenter.defaultCenter().addObserver(self, selector: #selector(self.loadSearchData), name: "loadBookData", object: nil)
     }
     
     override func viewWillAppear(animated:Bool){
@@ -92,7 +90,7 @@ class BookResultsTableViewController: UITableViewController {
                 let filteredBooks = self.filteredBooks(self.hardcoverSearchResults)
                 seller.text = filteredBooks[indexPath.row]._seller!
                 price.text = filteredBooks[indexPath.row]._price!
-                location.text = filteredBooks[indexPath.row]._price
+                location.text = filteredBooks[indexPath.row]._location!
                 
             } else {
                 seller.text = self.hardcoverSearchResults[indexPath.row]._seller!
@@ -212,12 +210,14 @@ extension BookResultsTableViewController {
         switch self._bookTypeSegmentedControl.selectedSegmentIndex {
         case 0:
             if self.hardcoverSearchResults.count == 0{
-                self.loadSearchData("hardcover")
+                self.bookType = "hardcover"
+                self.loadSearchData()
             }
             break
         case 1:
             if self.paperbackSearchResults.count == 0{
-                self.loadSearchData("paperback")
+                self.bookType = "paperback"
+                self.loadSearchData()
             }
             break
         default:
@@ -231,19 +231,28 @@ extension BookResultsTableViewController {
 extension BookResultsTableViewController {
     /* The search_results_array returns JSON with 3 keys - Hardcover, Paperback, Audiobook
         In each Key there is an array that holds the book information (Seller, Price, Location) */
-    func loadSearchData(bookType:String){
-        //self.isCurrentlySearching = true
+    
+    func postSearchData(bookType:String){
         var searchURL = "https://fathomless-gorge-53738.herokuapp.com/book"
         if bookType == "paperback" {
-            searchURL = searchURL + "2"
+            
         }
-        Alamofire.request(.GET, searchURL, parameters: ["link":self.bookLink, "book_type":bookType]).responseJSON(completionHandler: {
+        
+        Alamofire.request(.POST, searchURL, parameters: ["link":self.bookLink, "book_type":bookType, "device_id":self.device_token])
+    }
+    func loadSearchData(){
+        //self.isCurrentlySearching = true
+        var searchURL = "https://fathomless-gorge-53738.herokuapp.com/book"
+        if self.bookType == "paperback" {
+            
+        }
+        Alamofire.request(.GET, searchURL, parameters: ["device_id":self.device_token]).responseJSON(completionHandler: {
             response in
             do {
                 
                 //self.unavailable = false
-                let search_results_array = try NSJSONSerialization.JSONObjectWithData(response.data!, options: []) as! Dictionary<NSObject, AnyObject>
-                let dictionary = search_results_array[bookType] as! Array<Dictionary<NSObject, AnyObject>>
+                let search_results_array = try NSJSONSerialization.JSONObjectWithData(response.data!, options: []) as! Array<Dictionary<NSObject, AnyObject>>
+                let dictionary = search_results_array
                 
                 if dictionary.count == 0 {
                     self.unavailable = true
@@ -257,7 +266,7 @@ extension BookResultsTableViewController {
                 for i in 0..<dictionary.count {
                     let newBook = Book(seller: dictionary[i]["seller"] as! String, price: dictionary[i]["price"] as! String, location: dictionary[i]["location"] as! String)
                     
-                    switch bookType {
+                    switch self.bookType {
                     case "hardcover":
                         self.hardcoverSearchResults += [newBook]
                         break

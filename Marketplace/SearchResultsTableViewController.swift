@@ -17,16 +17,18 @@ class SearchResultsTableViewController: UITableViewController {
     var searchResults:[Book] = []
     var pageNumber:Int = 1
     
+    var device_token:String = "<5a0b50fe e241aba2 4285b990 40d374e9 4ebff20e cb3fc17f b5ebed36 2ce6514b>"
+    
     override func viewDidLoad() {
         super.viewDidLoad()
         self.clearsSelectionOnViewWillAppear = true
+        let app_delegate = UIApplication.sharedApplication().delegate as! AppDelegate
+        //device_token = app_delegate.deviceToken!
         
-        self.loadSearchData()
-
-        // Uncomment the following line to display an Edit button in the navigation bar for this view controller.
-        // self.navigationItem.rightBarButtonItem = self.editButtonItem()
+        NSNotificationCenter.defaultCenter().addObserver(self, selector: #selector(self.loadSearchData), name: "loadSearchData", object: nil)
         
-        //MARK: - Make API call to populate the searchResults array
+        self.requestSearch()
+        //self.loadSearchData()
     }
     
     override func viewWillAppear(animated:Bool){
@@ -133,25 +135,30 @@ class SearchResultsTableViewController: UITableViewController {
 
 }
 
+/* API CALLS */
 extension SearchResultsTableViewController {
+    func requestSearch(){
+        Alamofire.request(.POST, "https://fathomless-gorge-53738.herokuapp.com/search", parameters: ["keywords":self.searchText, "device_id":device_token])
+    }
+    
     func loadSearchData(){
-        if self.searchText != "" {
-            Alamofire.request(.GET, "https://fathomless-gorge-53738.herokuapp.com/search", parameters: ["keywords":self.searchText, "page_num":self.pageNumber]).responseJSON(completionHandler: {
+        //if self.searchText != "" {
+            Alamofire.request(.GET, "https://fathomless-gorge-53738.herokuapp.com/search", parameters: ["device_id":self.device_token]).responseJSON(completionHandler: {
                 response in
                 do {
                     let book_search_results_array = try NSJSONSerialization.JSONObjectWithData(response.data!, options: []) as! Array<Dictionary<NSObject, AnyObject>>
                     /*if book_search_results_array[0]["result"]  == nil {
-                        //If this is nil then that means there was an error so you should not continue with trying to parse results. Instead, tell the user that the information does not exist and allow them to search again
-                    } else {*/
-                        for i in 0..<book_search_results_array.count{
-                            let book_title = book_search_results_array[i]["title"] as! String
-                            let book_link = book_search_results_array[i]["link"] as! String
-                            let book_img = book_search_results_array[i]["img"] as! String
-                            
-                            let newBook = Book(title: book_title, link: book_link, img: book_img)
-                            self.searchResults += [newBook]
-                            self.tableView.reloadData()
-                        }
+                     //If this is nil then that means there was an error so you should not continue with trying to parse results. Instead, tell the user that the information does not exist and allow them to search again
+                     } else {*/
+                    for i in 0..<book_search_results_array.count{
+                        let book_title = book_search_results_array[i]["title"] as! String
+                        let book_link = book_search_results_array[i]["link"] as! String
+                        let book_img = book_search_results_array[i]["img"] as! String
+                        
+                        let newBook = Book(title: book_title, link: book_link, img: book_img)
+                        self.searchResults += [newBook]
+                        self.tableView.reloadData()
+                    }
                     //}
                 } catch {
                     print(error)
@@ -160,6 +167,8 @@ extension SearchResultsTableViewController {
             })
             
         }
-        
-    }
+    //}
 }
+
+extension SearchResultsTableViewController {
+   }

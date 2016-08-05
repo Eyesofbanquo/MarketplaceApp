@@ -23,6 +23,8 @@ class SearchViewController: UIViewController, CLLocationManagerDelegate, UISearc
     @IBOutlet weak var _searchTextField: UITextField!
     @IBOutlet weak var _searchBar: UISearchBar!
     @IBOutlet weak var _bottomConstraint: NSLayoutConstraint!
+    @IBOutlet weak var _topResultImageView: UIImageView!
+    
     
     //MARK: - Class Elements in camelCase
     let locationManager = CLLocationManager()
@@ -60,9 +62,7 @@ class SearchViewController: UIViewController, CLLocationManagerDelegate, UISearc
         //locationManager.requestWhenInUseAuthorization()
         //locationManager.startUpdatingLocation()
     
-        // For dismissing the keyboard
-       /* NSNotificationCenter.defaultCenter().addObserver(self, selector: #selector(SearchViewController.keyboardWillShow(_:)), name:UIKeyboardWillShowNotification, object: self.view.window)
-        NSNotificationCenter.defaultCenter().addObserver(self, selector: #selector(SearchViewController.keyboardWillHide(_:)), name:UIKeyboardWillHideNotification, object: self.view.window)*/
+        NSNotificationCenter.defaultCenter().addObserver(self, selector: #selector(self.loadImage), name: "load_image", object: nil)
     }
     
     func keyboardWillShow(sender: NSNotification) {
@@ -121,7 +121,11 @@ class SearchViewController: UIViewController, CLLocationManagerDelegate, UISearc
             //print(placemark!.locality!)
             //print(placemark!.postalCode!)
             print(placemark!.administrativeArea!) // State information
-            //print(placemark!.country!)
+            //User coredata instead
+            if NSUserDefaults.standardUserDefaults().valueForKey("location") == nil {
+                 NSUserDefaults.standardUserDefaults().setValue(placemark!.administrativeArea!, forKeyPath: "location")
+            }
+           
         }
     }
     
@@ -171,7 +175,6 @@ extension SearchViewController {
     func searchBarCancelButtonClicked(searchBar: UISearchBar) {
         self.searching = false
         self.dismissKeyboard()
-        self._searchTableView.reloadData()
     }
     
     func searchBarTextDidEndEditing(searchBar: UISearchBar) {
@@ -179,7 +182,7 @@ extension SearchViewController {
     }
     
     func search(){
-        if self._searchBar.text!.characters.count > 3{
+        if self._searchBar.text!.characters.count > 1{
 
             self.searching = true
             
@@ -190,16 +193,14 @@ extension SearchViewController {
                 self._searchTableView.reloadData()
                 let search_results_xml = SWXMLHash.parse((data_string! as String))
                 let size = search_results_xml["GoodreadsResponse"]["search"]["results"]["work"].children.count
-                /*for i in 0..<size{
-                    if i == size {
-                        break
-                    }
-                    print(search_results_xml["GoodreadsResponse"]["search"]["results"]["work"][i]["best_book"])
-                }*/
                 
-                for (_,work) in search_results_xml["GoodreadsResponse"]["search"]["results"]["work"].enumerate() {
+                for (index,work) in search_results_xml["GoodreadsResponse"]["search"]["results"]["work"].enumerate() {
+                    /*if index == 1 {
+                        self._topResultImageView.image = UIImage(data: NSData(contentsOfURL: NSURL(string: (work["best_book"]["image_url"].element?.text!)!)!)!)
+                    }*/
                     if !self.searchResults.contains((work["best_book"]["author"]["name"].element?.text!)!){
                         self.searchResults += [(work["best_book"]["author"]["name"].element?.text!)!]
+                        
                     }
                     
                     self._searchTableView.reloadData()
@@ -215,13 +216,25 @@ extension SearchViewController {
         /*if self.searching == false {
             NSTimer.scheduledTimerWithTimeInterval(1.0, target: self, selector: #selector(self.search), userInfo: nil, repeats: false)
         }*/
+        
         self.search()
 
-        self._searchTableView.reloadData()
+        
     }
 }
 
+/* API CALLS */
+extension SearchViewController {
+    
+    
+}
+
 extension SearchViewController{
+    
+    //Helper function for setting the current image
+    func loadImage(){
+        
+    }
     
     //When the user selects an item from the list make sure you set the search text to match that item
     func tableView(tableView: UITableView, didSelectRowAtIndexPath indexPath: NSIndexPath) {
@@ -244,7 +257,18 @@ extension SearchViewController{
         let cell = tableView.dequeueReusableCellWithIdentifier("search_results", forIndexPath: indexPath)
         let text = cell.viewWithTag(1) as! UILabel
         
-        text.text = self.searchResults[indexPath.row]
+        if let search_text = text.text{
+            if self.searchResults[indexPath.row].containsString(self._searchBar.text!){
+                let mutableString = NSMutableAttributedString(string: self.searchResults[indexPath.row], attributes: [:])
+                mutableString.addAttribute(NSForegroundColorAttributeName, value: UIColor.blackColor(), range: NSRange(location: 0, length: self._searchBar.text!.characters.count))
+                //text.text = self.searchResults[indexPath.row]
+                text.attributedText = mutableString
+            } else {
+               text.text = self.searchResults[indexPath.row]
+            }
+        }
+        
+        
         
         return cell
     }

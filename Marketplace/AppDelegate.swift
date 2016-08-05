@@ -12,9 +12,17 @@ import UIKit
 class AppDelegate: UIResponder, UIApplicationDelegate {
 
     var window: UIWindow?
+    var deviceToken:String?
 
 
     func application(application: UIApplication, didFinishLaunchingWithOptions launchOptions: [NSObject: AnyObject]?) -> Bool {
+        
+        //Push notifications
+        let notificationTypes: UIUserNotificationType = [UIUserNotificationType.Alert, UIUserNotificationType.Badge, UIUserNotificationType.Sound]
+        let pushNotificationSettings = UIUserNotificationSettings(forTypes: notificationTypes, categories: nil)
+        application.registerUserNotificationSettings(pushNotificationSettings)
+        application.registerForRemoteNotifications()
+        
         // Override point for customization after application launch.
         return true
     }
@@ -42,5 +50,35 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     }
 
 
+}
+
+
+//Push notifications
+extension AppDelegate {
+    
+    func application(application: UIApplication, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: NSData) {
+        print(deviceToken)
+        self.deviceToken = "\(deviceToken)"
+    }
+    
+    func application(application: UIApplication, didFailToRegisterForRemoteNotificationsWithError error: NSError) {
+    }
+    
+    func application(application: UIApplication, didReceiveRemoteNotification userInfo: [NSObject : AnyObject]) {
+        print(userInfo)
+        if let done = (userInfo["loadSearchData"] as? Int){
+            if done == 1 {
+                //This means the search is done
+                NSNotificationCenter.defaultCenter().postNotificationName("loadSearchData", object: nil)
+            }
+        }
+        if let bookData = (userInfo["loadBookData"] as? Int){
+            if bookData == 1 {
+                NSNotificationCenter.defaultCenter().postNotificationName("loadBookData", object: nil)
+            }
+        }
+        
+    }
+    
 }
 

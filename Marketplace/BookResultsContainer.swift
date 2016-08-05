@@ -41,7 +41,7 @@ class BookResultsContainer: UIViewController {
             //let destination = nav.topViewController as! BookResultsTableViewController
             self.bookResultsTableViewController.bookLink = self.bookLink
             self.bookResultsTableViewController.bookTitle = self.bookTitle
-            self.bookResultsTableViewController.loadSearchData("hardcover")
+            self.bookResultsTableViewController.postSearchData("hardcover")
             NSNotificationCenter.defaultCenter().addObserver(self, selector: #selector(self.checkAvailability), name: "availability", object: nil)
             NSNotificationCenter.defaultCenter().addObserver(self, selector: #selector(self.loadingView), name: "loading", object: nil)
             self.bookResultsTableViewController._bookTypeSegmentedControl = self._bookTypeSegmentedControl
@@ -75,8 +75,8 @@ extension BookResultsContainer {
             if self.bookResultsTableViewController.hardcoverSearchResults.count == 0 {
                 self._loadingView.hidden = false
                 self.bookType = "hardcover"
-                //self._loadingView.hidden = false
-                self.bookResultsTableViewController.loadSearchData("hardcover")
+                self.bookResultsTableViewController.bookType = "hardcover"
+                self.bookResultsTableViewController.postSearchData("hardcover")
                 
             }
             break
@@ -85,7 +85,9 @@ extension BookResultsContainer {
                 self._loadingView.hidden = false
                 self.bookType = "paperback"
                 //self._loadingView.hidden = false
-                self.bookResultsTableViewController.loadSearchData("paperback")
+                self.bookResultsTableViewController.bookType = "paperback"
+
+                self.bookResultsTableViewController.postSearchData("paperback")
             }
             break
         default:

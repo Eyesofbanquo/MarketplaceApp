@@ -7,17 +7,28 @@
 //
 
 import UIKit
+import MapKit
 
 class BookDetailViewController: UIViewController {
     
+    //Outlets
     @IBOutlet weak var _bookImage: UIImageView!
-    //var searchResultsView:SearchResultsTableViewController!
+    
+    //
     var selectedBook:Book!
     var bookTitle:String!
-    //var selectedBook:Book!
+    var locationManager:CLLocationManager!
+    var location:CLLocation!
 
     override func viewDidLoad() {
         super.viewDidLoad()
+        
+        //Use the user's current location for the initial location for mapkit
+        self.locationManager = CLLocationManager()
+        self.locationManager.delegate = self
+        self.locationManager.desiredAccuracy = kCLLocationAccuracyBest
+        self.locationManager.requestWhenInUseAuthorization()
+        self.locationManager.startUpdatingLocation()
         
         self.navigationController?.topViewController!.title = self.bookTitle
         
@@ -51,4 +62,26 @@ class BookDetailViewController: UIViewController {
     }
     */
 
+}
+
+extension BookDetailViewController: CLLocationManagerDelegate {
+    
+    func locationManager(manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
+        CLGeocoder().reverseGeocodeLocation(manager.location!, completionHandler: {
+            placemarks, error in
+            if (error != nil) {
+                print(error)
+            } else {
+                guard let pmarks = placemarks else { return }
+                if pmarks.count > 0 {
+                    let pm = pmarks[0] as CLPlacemark
+                    self.location = pm.location!
+                }
+            }
+        })
+    }
+    
+    func locationManager(manager: CLLocationManager, didFailWithError error: NSError) {
+        
+    }
 }
