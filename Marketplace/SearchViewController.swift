@@ -13,10 +13,9 @@
 
 import UIKit
 import Alamofire
-import CoreLocation
 import SWXMLHash
 
-class SearchViewController: UIViewController, CLLocationManagerDelegate, UISearchBarDelegate, UITableViewDelegate, UITableViewDataSource {
+class SearchViewController: UIViewController, UISearchBarDelegate, UITableViewDelegate, UITableViewDataSource {
     
     //MARK: - UI Elements prefaced with _
     @IBOutlet weak var _searchTableView: UITableView!
@@ -27,9 +26,9 @@ class SearchViewController: UIViewController, CLLocationManagerDelegate, UISearc
     
     
     //MARK: - Class Elements in camelCase
-    let locationManager = CLLocationManager()
     var searchResults:[String] = []
     var searching:Bool!
+    var device_token:String!
     var api_key = ""
 
     override func viewDidLoad() {
@@ -37,100 +36,36 @@ class SearchViewController: UIViewController, CLLocationManagerDelegate, UISearc
         
         let tap: UITapGestureRecognizer = UITapGestureRecognizer(target: self, action: #selector(SearchViewController.dismissKeyboard))
         tap.cancelsTouchesInView = false
-        //view.addGestureRecognizer(tap)
-        
-        Alamofire.request(.GET, "https://fathomless-gorge-53738.herokuapp.com/api").responseJSON(completionHandler: {
-            response in
-            do {
-                let responseDict = try NSJSONSerialization.JSONObjectWithData(response.data!, options: []) as! Array<Dictionary<NSObject, AnyObject>>
-                self.api_key = responseDict[0]["key"] as! String
-                print(self.api_key)
-            } catch {
-                
-            }
-            
-        })
-        
-        self.title = "Marketplace"
+
+        self.title = "Search"
         self.searching = false
         
         self._searchBar.showsCancelButton = true
         self._searchBar.delegate = self
         
-        locationManager.delegate = self
-        locationManager.desiredAccuracy = kCLLocationAccuracyBest
-        //locationManager.requestWhenInUseAuthorization()
-        //locationManager.startUpdatingLocation()
-    
-        NSNotificationCenter.defaultCenter().addObserver(self, selector: #selector(self.loadImage), name: "load_image", object: nil)
-    }
-    
-    func keyboardWillShow(sender: NSNotification) {
-        let userInfo: [NSObject : AnyObject] = sender.userInfo!
-        let keyboardSize: CGSize = userInfo[UIKeyboardFrameBeginUserInfoKey]!.CGRectValue.size
-        let offset: CGSize = userInfo[UIKeyboardFrameEndUserInfoKey]!.CGRectValue.size
+        //Notifications
+        NSNotificationCenter.defaultCenter().addObserver(self, selector: #selector(self.getApiKey), name: "getApiKey", object: nil)
+        NSNotificationCenter.defaultCenter().addObserver(self, selector: #selector(self.postApiKey), name: "postApiKey", object: nil)
         
-        if keyboardSize.height == offset.height {
-            UIView.animateWithDuration(0.1, animations: { () -> Void in
-                self.view.frame.origin.y -= keyboardSize.height
-            })
-        } else {
-            UIView.animateWithDuration(0.1, animations: { () -> Void in
-                self.view.frame.origin.y += keyboardSize.height - offset.height
-            })
-        }
+        self.navigationController?.navigationBar.tintColor = UIColor.whiteColor()
+        self.navigationController?.navigationBar.titleTextAttributes = [NSForegroundColorAttributeName : UIColor.whiteColor()]
+        self.navigationController?.navigationBar.barTintColor = UIColor(red: 225.0/255.0, green: 33.0/255.0, blue: 55.0/255.0, alpha: 1.0)
     }
-    
-    func keyboardWillHide(sender: NSNotification) {
-        let userInfo: [NSObject : AnyObject] = sender.userInfo!
-        let keyboardSize: CGSize = userInfo[UIKeyboardFrameBeginUserInfoKey]!.CGRectValue.size
-        self.view.frame.origin.y += keyboardSize.height
-    }
+
  
  
     func dismissKeyboard(){
         self._searchBar.endEditing(true)
 
     }
-    
-    
-    
+
     override func viewDidAppear(animated: Bool) {
         super.viewDidAppear(animated)
-        
-        self.navigationController?.navigationBar.tintColor = UIColor.whiteColor()
-        
-        self.navigationController?.navigationBar.titleTextAttributes = [NSForegroundColorAttributeName : UIColor.whiteColor()]
 
-        self.navigationController?.navigationBar.barTintColor = UIColor(red: 225.0/255.0, green: 33.0/255.0, blue: 55.0/255.0, alpha: 1.0)
     }
     
-    func locationManager(manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
-        CLGeocoder().reverseGeocodeLocation(manager.location!, completionHandler: {placemarks,errors in
-            if placemarks!.count > 0 {
-                let pm = placemarks![0] as CLPlacemark
-                self.getLocationInformation(pm)
-            }
-        })
-    }
-    
-    func getLocationInformation(placemark: CLPlacemark?){
-        if placemark != nil {
-            //stop updating location to save battery life
-            locationManager.stopUpdatingLocation()
-            //print(placemark!.locality!)
-            //print(placemark!.postalCode!)
-            print(placemark!.administrativeArea!) // State information
-            //User coredata instead
-            if NSUserDefaults.standardUserDefaults().valueForKey("location") == nil {
-                 NSUserDefaults.standardUserDefaults().setValue(placemark!.administrativeArea!, forKeyPath: "location")
-            }
-           
-        }
-    }
-    
-    func locationManager(manager: CLLocationManager, didFailWithError error: NSError) {
-        print("Error while updating location " + error.localizedDescription)
+    override func preferredStatusBarStyle() -> UIStatusBarStyle {
+        return .LightContent
     }
 
     override func didReceiveMemoryWarning() {
@@ -141,7 +76,6 @@ class SearchViewController: UIViewController, CLLocationManagerDelegate, UISearc
 
     
     // MARK: - Navigation
-
     // In a storyboard-based application, you will often want to do a little preparation before navigation
     override func prepareForSegue(segue: UIStoryboardSegue, sender: AnyObject?) {
         // Get the new view controller using segue.destinationViewController.
@@ -174,6 +108,7 @@ extension SearchViewController {
     
     func searchBarCancelButtonClicked(searchBar: UISearchBar) {
         self.searching = false
+        
         self.dismissKeyboard()
     }
     
@@ -181,8 +116,26 @@ extension SearchViewController {
         self.dismissKeyboard()
     }
     
+    //This function is created since the device token is not set until after this view loads. So once the device token is called send a notification to this View to make the POST call to the API
+    func postApiKey(){
+        let appDelegate = UIApplication.sharedApplication().delegate as! AppDelegate
+        self.device_token = appDelegate.deviceToken
+        Alamofire.request(.POST, "https://fathomless-gorge-53738.herokuapp.com/api", parameters: ["device_id":self.device_token!])
+    }
+    
+    func getApiKey(){
+        Alamofire.request(.GET, "https://fathomless-gorge-53738.herokuapp.com/api", parameters: ["device_id":self.device_token!]).responseJSON(completionHandler: {
+            response in
+            print(response.description)
+            let responseJSON = try! NSJSONSerialization.JSONObjectWithData(response.data!, options: []) as! Array<Dictionary<NSObject,AnyObject>>
+            print(responseJSON)
+            self.api_key = responseJSON[0]["key"] as! String
+            
+        })
+    }
+    
     func search(){
-        if self._searchBar.text!.characters.count > 1{
+        if self._searchBar.text!.characters.count > 3{
 
             self.searching = true
             
@@ -192,15 +145,17 @@ extension SearchViewController {
                 self.searchResults = []
                 self._searchTableView.reloadData()
                 let search_results_xml = SWXMLHash.parse((data_string! as String))
-                let size = search_results_xml["GoodreadsResponse"]["search"]["results"]["work"].children.count
                 
-                for (index,work) in search_results_xml["GoodreadsResponse"]["search"]["results"]["work"].enumerate() {
-                    /*if index == 1 {
-                        self._topResultImageView.image = UIImage(data: NSData(contentsOfURL: NSURL(string: (work["best_book"]["image_url"].element?.text!)!)!)!)
-                    }*/
+                for (_,work) in search_results_xml["GoodreadsResponse"]["search"]["results"]["work"].enumerate() {
                     if !self.searchResults.contains((work["best_book"]["author"]["name"].element?.text!)!){
-                        self.searchResults += [(work["best_book"]["author"]["name"].element?.text!)!]
+                        let authorname = (work["best_book"]["author"]["name"].element?.text!)!
+                        let bookname = (work["best_book"]["title"].element?.text!)!
                         
+                        if bookname.containsString(self._searchBar.text!){
+                            self.searchResults += [bookname]
+                        } else {
+                            self.searchResults += [authorname]
+                        }
                     }
                     
                     self._searchTableView.reloadData()
@@ -212,29 +167,14 @@ extension SearchViewController {
 
     
     func searchBar(searchBar: UISearchBar, textDidChange searchText: String) {
-        
-        /*if self.searching == false {
-            NSTimer.scheduledTimerWithTimeInterval(1.0, target: self, selector: #selector(self.search), userInfo: nil, repeats: false)
-        }*/
-        
+        if searchText.isEmpty {
+            self.searchResults = []
+            self._searchTableView.reloadData()
+        }
         self.search()
-
-        
     }
 }
-
-/* API CALLS */
-extension SearchViewController {
-    
-    
-}
-
 extension SearchViewController{
-    
-    //Helper function for setting the current image
-    func loadImage(){
-        
-    }
     
     //When the user selects an item from the list make sure you set the search text to match that item
     func tableView(tableView: UITableView, didSelectRowAtIndexPath indexPath: NSIndexPath) {
@@ -256,19 +196,7 @@ extension SearchViewController{
     func tableView(tableView: UITableView, cellForRowAtIndexPath indexPath: NSIndexPath) -> UITableViewCell {
         let cell = tableView.dequeueReusableCellWithIdentifier("search_results", forIndexPath: indexPath)
         let text = cell.viewWithTag(1) as! UILabel
-        
-        if let search_text = text.text{
-            if self.searchResults[indexPath.row].containsString(self._searchBar.text!){
-                let mutableString = NSMutableAttributedString(string: self.searchResults[indexPath.row], attributes: [:])
-                mutableString.addAttribute(NSForegroundColorAttributeName, value: UIColor.blackColor(), range: NSRange(location: 0, length: self._searchBar.text!.characters.count))
-                //text.text = self.searchResults[indexPath.row]
-                text.attributedText = mutableString
-            } else {
-               text.text = self.searchResults[indexPath.row]
-            }
-        }
-        
-        
+        text.text = self.searchResults[indexPath.row]
         
         return cell
     }

@@ -21,11 +21,17 @@ class BookResultsContainer: UIViewController {
     var bookResultsTableViewController:BookResultsTableViewController!
     override func viewDidLoad() {
         super.viewDidLoad()
-        //self.bookType = "hardcover"
         self.title = self.bookTitle
         
-
-        // Do any additional setup after loading the view.
+        
+    }
+    
+    override func viewDidAppear(animated: Bool) {
+        super.viewDidAppear(animated)
+        
+        /*if self.bookResultsTableViewController != nil {
+            self.bookResultsTableViewController.tableView.reloadData()
+        }*/
     }
 
     override func didReceiveMemoryWarning() {
@@ -38,14 +44,17 @@ class BookResultsContainer: UIViewController {
         // Pass the selected object to the new view controller.
         if segue.identifier == "to_BookResultsTableViewController"{
             self.bookResultsTableViewController = segue.destinationViewController as! BookResultsTableViewController
-            //let destination = nav.topViewController as! BookResultsTableViewController
             self.bookResultsTableViewController.bookLink = self.bookLink
             self.bookResultsTableViewController.bookTitle = self.bookTitle
+            
+            let app_delegate = UIApplication.sharedApplication().delegate as! AppDelegate
+            self.bookResultsTableViewController.device_token = app_delegate.deviceToken!
+            
             self.bookResultsTableViewController.postSearchData("hardcover")
             NSNotificationCenter.defaultCenter().addObserver(self, selector: #selector(self.checkAvailability), name: "availability", object: nil)
             NSNotificationCenter.defaultCenter().addObserver(self, selector: #selector(self.loadingView), name: "loading", object: nil)
-            self.bookResultsTableViewController._bookTypeSegmentedControl = self._bookTypeSegmentedControl
-                
+            
+            self.bookResultsTableViewController._bookTypeSegmentedControl = self._bookTypeSegmentedControl  
             }
     }
     
@@ -56,7 +65,8 @@ class BookResultsContainer: UIViewController {
     func checkAvailability(){
         if self.bookResultsTableViewController.unavailable == true {
             self._unavailableView.hidden = false
-            self._unavailableText.text = "\(self.bookType) unavailable"
+            self._loadingView.hidden = true
+            self._unavailableText.text = "\(self.bookResultsTableViewController.bookType) unavailable"
         }else {
             self._unavailableView.hidden = true
         }
@@ -67,67 +77,31 @@ class BookResultsContainer: UIViewController {
 extension BookResultsContainer {
     
     @IBAction func refreshTable(sender: AnyObject) {
-        
-        
-        
+        self.bookResultsTableViewController._hpbSelectSwitch.on = false
+
         switch (sender as! UISegmentedControl).selectedSegmentIndex {
         case 0:
             if self.bookResultsTableViewController.hardcoverSearchResults.count == 0 {
                 self._loadingView.hidden = false
-                self.bookType = "hardcover"
                 self.bookResultsTableViewController.bookType = "hardcover"
                 self.bookResultsTableViewController.postSearchData("hardcover")
+                self.bookResultsTableViewController.tableView.reloadData()
+
                 
             }
             break
         case 1:
             if self.bookResultsTableViewController.paperbackSearchResults.count == 0 {
                 self._loadingView.hidden = false
-                self.bookType = "paperback"
-                //self._loadingView.hidden = false
                 self.bookResultsTableViewController.bookType = "paperback"
-
                 self.bookResultsTableViewController.postSearchData("paperback")
-            }
-            break
-        default:
-            break
-        }
-        
-        
-        self.bookResultsTableViewController.tableView.reloadData()
-    }
-    
-    
-   /* @IBAction func refreshTable(sender: AnyObject) {
-        
-        switch (sender as! UISegmentedControl).selectedSegmentIndex {
-        case 0:
-            if self.hardcoverSearchResults.count == 0 {
-                self.loadSearchData("hardcover")
-            }
-            break
-        case 1:
-            if self.paperbackSearchResults.count == 0 {
-                self.loadSearchData("paperback")
-            }
-            break
-        default:
-            break
-        }
-        
-        self.tableView.reloadData()
-    }*/
-}
+                self.bookResultsTableViewController.tableView.reloadData()
 
-extension UITableView {
-    
-    func availability(b:BookResultsContainer){
-        if b.bookResultsTableViewController.unavailable == true {
-            b._unavailableView.hidden = false
-            b._unavailableText.text = "\(b.bookType) unavailable"
-        }else {
-            b._unavailableView.hidden = true
+            }
+            break
+        default:
+            break
         }
     }
+    
 }

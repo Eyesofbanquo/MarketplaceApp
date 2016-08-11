@@ -17,18 +17,17 @@ class SearchResultsTableViewController: UITableViewController {
     var searchResults:[Book] = []
     var pageNumber:Int = 1
     
-    var device_token:String = "<5a0b50fe e241aba2 4285b990 40d374e9 4ebff20e cb3fc17f b5ebed36 2ce6514b>"
+    var device_token:String!
     
     override func viewDidLoad() {
         super.viewDidLoad()
         self.clearsSelectionOnViewWillAppear = true
         let app_delegate = UIApplication.sharedApplication().delegate as! AppDelegate
-        //device_token = app_delegate.deviceToken!
+        device_token = app_delegate.deviceToken!
         
         NSNotificationCenter.defaultCenter().addObserver(self, selector: #selector(self.loadSearchData), name: "loadSearchData", object: nil)
         
         self.requestSearch()
-        //self.loadSearchData()
     }
     
     override func viewWillAppear(animated:Bool){
@@ -43,11 +42,6 @@ class SearchResultsTableViewController: UITableViewController {
         super.didReceiveMemoryWarning()
         // Dispose of any resources that can be recreated.
     }
-
-    // MARK: - Table view data source
-
-    
-    
 
     override func tableView(tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
         // #warning Incomplete implementation, return the number of rows
@@ -66,58 +60,17 @@ class SearchResultsTableViewController: UITableViewController {
         let title = cell.viewWithTag(2) as! UILabel
         
         title.text = self.searchResults[indexPath.row]._title!
-        image.image = self.searchResults[indexPath.row].Image()
+        image.image = self.searchResults[indexPath.row].image
 
         return cell
     }
-    
-
-    /*
-    // Override to support conditional editing of the table view.
-    override func tableView(tableView: UITableView, canEditRowAtIndexPath indexPath: NSIndexPath) -> Bool {
-        // Return false if you do not want the specified item to be editable.
-        return true
-    }
-    */
-
-    /*
-    // Override to support editing the table view.
-    override func tableView(tableView: UITableView, commitEditingStyle editingStyle: UITableViewCellEditingStyle, forRowAtIndexPath indexPath: NSIndexPath) {
-        if editingStyle == .Delete {
-            // Delete the row from the data source
-            tableView.deleteRowsAtIndexPaths([indexPath], withRowAnimation: .Fade)
-        } else if editingStyle == .Insert {
-            // Create a new instance of the appropriate class, insert it into the array, and add a new row to the table view
-        }    
-    }
-    */
-
-    /*
-    // Override to support rearranging the table view.
-    override func tableView(tableView: UITableView, moveRowAtIndexPath fromIndexPath: NSIndexPath, toIndexPath: NSIndexPath) {
-
-    }
-    */
-
-    /*
-    // Override to support conditional rearranging of the table view.
-    override func tableView(tableView: UITableView, canMoveRowAtIndexPath indexPath: NSIndexPath) -> Bool {
-        // Return false if you do not want the item to be re-orderable.
-        return true
-    }
-    */
-
-
-    // MARK: - Navigation
 
     // In a storyboard-based application, you will often want to do a little preparation before navigation
     override func prepareForSegue(segue: UIStoryboardSegue, sender: AnyObject?) {
         // Get the new view controller using segue.destinationViewController.
         // Pass the selected object to the new view controller.
-        //Alamofire.request(.GET, "https://fathomless-gorge-53738.herokuapp.com/fail")
         if segue.identifier == "to_bookReseultsContainer"{
             let destination = segue.destinationViewController as! BookResultsContainer
-            //let destination = nav.topViewController as! BookResultsTableViewController
             if let cell = sender as? UITableViewCell{
                 if let indexPath = tableView.indexPathForCell(cell){
                     let selected_book_link = self.searchResults[indexPath.row]._link!
@@ -127,8 +80,6 @@ class SearchResultsTableViewController: UITableViewController {
                 }
                 
             }
-            
-            //let link = self.searchResults[indexPath.row]
         }
     }
  
@@ -138,18 +89,19 @@ class SearchResultsTableViewController: UITableViewController {
 /* API CALLS */
 extension SearchResultsTableViewController {
     func requestSearch(){
-        Alamofire.request(.POST, "https://fathomless-gorge-53738.herokuapp.com/search", parameters: ["keywords":self.searchText, "device_id":device_token])
+        dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), {
+            Alamofire.request(.POST, "https://fathomless-gorge-53738.herokuapp.com/search", parameters: ["keywords":self.searchText, "device_id":self.device_token])
+        })
     }
     
     func loadSearchData(){
-        //if self.searchText != "" {
+        dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0)) {
             Alamofire.request(.GET, "https://fathomless-gorge-53738.herokuapp.com/search", parameters: ["device_id":self.device_token]).responseJSON(completionHandler: {
                 response in
                 do {
                     let book_search_results_array = try NSJSONSerialization.JSONObjectWithData(response.data!, options: []) as! Array<Dictionary<NSObject, AnyObject>>
-                    /*if book_search_results_array[0]["result"]  == nil {
-                     //If this is nil then that means there was an error so you should not continue with trying to parse results. Instead, tell the user that the information does not exist and allow them to search again
-                     } else {*/
+                    //If this is nil then that means there was an error so you should not continue with trying to parse results. Instead, tell the user that the information does not exist and allow them to search again
+                    //dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), {
                     for i in 0..<book_search_results_array.count{
                         let book_title = book_search_results_array[i]["title"] as! String
                         let book_link = book_search_results_array[i]["link"] as! String
@@ -157,18 +109,24 @@ extension SearchResultsTableViewController {
                         
                         let newBook = Book(title: book_title, link: book_link, img: book_img)
                         self.searchResults += [newBook]
-                        self.tableView.reloadData()
+                        dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), {
+                            let image_data = NSData(contentsOfURL: NSURL(string: book_img)!)
+                            let image = UIImage(data: image_data!)
+                            
+                            dispatch_async(dispatch_get_main_queue()){
+                                newBook.image = image
+                                self.tableView.reloadData()
+                            }
+                            
+                        })
                     }
-                    //}
+                    //})
                 } catch {
                     print(error)
                 }
-                
+                self.tableView.reloadData()
             })
-            
         }
-    //}
+        
+    }
 }
-
-extension SearchResultsTableViewController {
-   }

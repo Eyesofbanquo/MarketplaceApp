@@ -27,18 +27,6 @@ class Book {
         self._img = img
     }
     
-    func Image() -> UIImage{
-        
-        if self.image == nil {
-            let image_data = NSData(contentsOfURL: NSURL(string: self._img!)!)
-            let image = UIImage(data: image_data!)
-            self.image = image
-            return self.image!
-        } else {
-            return self.image!
-        }
-
-    }
     
     //This init is for the BookResultsView
     init(seller:String, price:String, location:String){

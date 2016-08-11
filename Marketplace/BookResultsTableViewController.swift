@@ -22,25 +22,19 @@ class BookResultsTableViewController: UITableViewController {
     var unavailable:Bool = false
     var hardcoverSearchResults:[Book] = []
     var paperbackSearchResults:[Book] = []
-    var audiobookSearchResults:NSObject!
-    var isCurrentlySearching:Bool!
+    //var audiobookSearchResults:NSObject!
     
-    var device_token:String = "<5a0b50fe e241aba2 4285b990 40d374e9 4ebff20e cb3fc17f b5ebed36 2ce6514b>"
+    var device_token:String!
     
     override func viewDidLoad() {
         super.viewDidLoad()
         self.bookType = "hardcover"
-        //self._hpbSelectSwitch.enabled = false
-        //self.loadSearchData(bookType)
-        //self.postSearchData(self.bookType)
 
         NSNotificationCenter.defaultCenter().addObserver(self, selector: #selector(self.loadSearchData), name: "loadBookData", object: nil)
     }
     
     override func viewWillAppear(animated:Bool){
         super.viewWillAppear(animated)
-        //self.navigationController?.setNavigationBarHidden(false, animated: false)
-        //self.loadSearchData(bookType)
         self.title = self.bookTitle
 
     }
@@ -56,7 +50,7 @@ class BookResultsTableViewController: UITableViewController {
         // #warning Incomplete implementation, return the number of rows
         switch self._bookTypeSegmentedControl.selectedSegmentIndex {
         case 0:
-            if self._hpbSelectSwitch.enabled == true {
+            if self._hpbSelectSwitch.on == true {
                 let filteredBooks = self.filteredBooks(self.hardcoverSearchResults)
                 return filteredBooks.count
             } else {
@@ -64,7 +58,12 @@ class BookResultsTableViewController: UITableViewController {
             }
             
         case 1:
-            return self.paperbackSearchResults.count
+            if self._hpbSelectSwitch.on == true {
+                let filteredBooks = self.filteredBooks(self.paperbackSearchResults)
+                return filteredBooks.count
+            } else {
+                return self.paperbackSearchResults.count
+            }
         default:
             return 0
         }
@@ -85,7 +84,7 @@ class BookResultsTableViewController: UITableViewController {
         
         switch self._bookTypeSegmentedControl.selectedSegmentIndex {
         case 0:
-            if self._hpbSelectSwitch.enabled == true{
+            if self._hpbSelectSwitch.on == true{
                 
                 let filteredBooks = self.filteredBooks(self.hardcoverSearchResults)
                 seller.text = filteredBooks[indexPath.row]._seller!
@@ -100,9 +99,18 @@ class BookResultsTableViewController: UITableViewController {
             
             break
         case 1:
-            seller.text = self.paperbackSearchResults[indexPath.row]._seller!
-            price.text = self.paperbackSearchResults[indexPath.row]._price!
-            location.text = self.paperbackSearchResults[indexPath.row]._location!
+            if self._hpbSelectSwitch.on == true{
+                
+                let filteredBooks = self.filteredBooks(self.paperbackSearchResults)
+                seller.text = filteredBooks[indexPath.row]._seller!
+                price.text = filteredBooks[indexPath.row]._price!
+                location.text = filteredBooks[indexPath.row]._location!
+                
+            } else {
+                seller.text = self.paperbackSearchResults[indexPath.row]._seller!
+                price.text = self.paperbackSearchResults[indexPath.row]._price!
+                location.text = self.paperbackSearchResults[indexPath.row]._location!
+            }
             break
         default:
             seller.text = "The"
@@ -112,44 +120,6 @@ class BookResultsTableViewController: UITableViewController {
 
         return cell
     }
-    
-    
- 
-
-    /*
-    // Override to support conditional editing of the table view.
-    override func tableView(tableView: UITableView, canEditRowAtIndexPath indexPath: NSIndexPath) -> Bool {
-        // Return false if you do not want the specified item to be editable.
-        return true
-    }
-    */
-
-    /*
-    // Override to support editing the table view.
-    override func tableView(tableView: UITableView, commitEditingStyle editingStyle: UITableViewCellEditingStyle, forRowAtIndexPath indexPath: NSIndexPath) {
-        if editingStyle == .Delete {
-            // Delete the row from the data source
-            tableView.deleteRowsAtIndexPaths([indexPath], withRowAnimation: .Fade)
-        } else if editingStyle == .Insert {
-            // Create a new instance of the appropriate class, insert it into the array, and add a new row to the table view
-        }    
-    }
-    */
-
-    /*
-    // Override to support rearranging the table view.
-    override func tableView(tableView: UITableView, moveRowAtIndexPath fromIndexPath: NSIndexPath, toIndexPath: NSIndexPath) {
-
-    }
-    */
-
-    /*
-    // Override to support conditional rearranging of the table view.
-    override func tableView(tableView: UITableView, canMoveRowAtIndexPath indexPath: NSIndexPath) -> Bool {
-        // Return false if you do not want the item to be re-orderable.
-        return true
-    }
-    */
 
     
     // MARK: - Navigation
@@ -160,19 +130,27 @@ class BookResultsTableViewController: UITableViewController {
         // Pass the selected object to the new view controller.
         if segue.identifier == "to_BookDetailViewController"{
             let destination = segue.destinationViewController as! BookDetailViewController
-            //let destination = nav.topViewController as! BookResultsTableViewController
             if let cell = sender as? UITableViewCell{
                 if let indexPath = tableView.indexPathForCell(cell){
                     destination.bookTitle = self.bookTitle
-                    //let selected_book_link = self.searchResults[indexPath.row]._link!
-                    //let selected_book_title = self.searchResults[indexPath.row]._title!
-                    //destination.bookLink = selected_book_link
-                    //destination.bookTitle = selected_book_title
+                    if self.bookType == "hardcover" {
+                        if self._hpbSelectSwitch.on {
+                            let filteredBooks = self.filteredBooks(self.hardcoverSearchResults)
+                            destination.bookLocation = filteredBooks[indexPath.row]._seller!
+                        } else {
+                            destination.bookLocation = self.hardcoverSearchResults[indexPath.row]._seller!
+                        }
+                    } else {
+                        if self._hpbSelectSwitch.on {
+                            let filteredBooks = self.filteredBooks(self.paperbackSearchResults)
+                            destination.bookLocation = filteredBooks[indexPath.row]._seller!
+                        } else {
+                            destination.bookLocation = self.paperbackSearchResults[indexPath.row]._seller!
+                        }
+                    }
                 }
                 
             }
-            
-            //let link = self.searchResults[indexPath.row]
         }
     }
     
@@ -181,7 +159,7 @@ class BookResultsTableViewController: UITableViewController {
 
 extension BookResultsTableViewController {
     func filteredBooks(originalBooks:[Book]) -> [Book]{
-        let filteredBooks = self.hardcoverSearchResults.filter({
+        let filteredBooks = originalBooks.filter({
             (filteredBook) in
             if ((filteredBook._seller?.containsString("HPB")) == true) {
                 return true
@@ -193,12 +171,9 @@ extension BookResultsTableViewController {
     }
     
     @IBAction func enableHPBMode(sender: AnyObject) {
-        /*if (sender as! UISwitch).enabled {
-            self.tableView.reloadData()
-        }*/
         NSNotificationCenter.defaultCenter().postNotificationName("availability", object: self)
-        self._hpbSelectSwitch.enabled = !self._hpbSelectSwitch.enabled
         self.tableView.reloadData()
+
     }
     
 }
@@ -224,7 +199,7 @@ extension BookResultsTableViewController {
             break
         }
         
-        self.tableView.reloadData()
+        //self.tableView.reloadData()
     }
 }
 
@@ -233,67 +208,54 @@ extension BookResultsTableViewController {
         In each Key there is an array that holds the book information (Seller, Price, Location) */
     
     func postSearchData(bookType:String){
-        var searchURL = "https://fathomless-gorge-53738.herokuapp.com/book"
-        if bookType == "paperback" {
-            
-        }
-        
-        Alamofire.request(.POST, searchURL, parameters: ["link":self.bookLink, "book_type":bookType, "device_id":self.device_token])
-    }
-    func loadSearchData(){
-        //self.isCurrentlySearching = true
-        var searchURL = "https://fathomless-gorge-53738.herokuapp.com/book"
-        if self.bookType == "paperback" {
-            
-        }
-        Alamofire.request(.GET, searchURL, parameters: ["device_id":self.device_token]).responseJSON(completionHandler: {
-            response in
-            do {
-                
-                //self.unavailable = false
-                let search_results_array = try NSJSONSerialization.JSONObjectWithData(response.data!, options: []) as! Array<Dictionary<NSObject, AnyObject>>
-                let dictionary = search_results_array
-                
-                if dictionary.count == 0 {
-                    self.unavailable = true
-                    NSNotificationCenter.defaultCenter().postNotificationName("availability", object: self)
-                    return
-                } else {
-                    self.unavailable = false
-                    NSNotificationCenter.defaultCenter().postNotificationName("availability", object: self)
-                }
-
-                for i in 0..<dictionary.count {
-                    let newBook = Book(seller: dictionary[i]["seller"] as! String, price: dictionary[i]["price"] as! String, location: dictionary[i]["location"] as! String)
-                    
-                    switch self.bookType {
-                    case "hardcover":
-                        self.hardcoverSearchResults += [newBook]
-                        break
-                    case "paperback":
-                        self.paperbackSearchResults += [newBook]
-                        break
-                    default:
-                        break
-                    }
-                    
-                    if i == dictionary.count - 1 {
-                        NSNotificationCenter.defaultCenter().postNotificationName("loading", object: self)
-                    }
-                    self.tableView.reloadData()
-                    
-                }
-            } catch {
-                //self.unavailable = true
-                
-                //self.tableView.avail
-                print(error)
-                return
-
-            }
-            self.isCurrentlySearching = false
+        let searchURL = "https://fathomless-gorge-53738.herokuapp.com/book"
+        dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), {
+            Alamofire.request(.POST, searchURL, parameters: ["link":self.bookLink, "book_type":bookType, "device_id":self.device_token])
         })
         
+    }
+    func loadSearchData(){
+        let searchURL = "https://fathomless-gorge-53738.herokuapp.com/book"
+            Alamofire.request(.GET, searchURL, parameters: ["device_id":self.device_token]).responseJSON(completionHandler: {
+                response in
+                dispatch_async(dispatch_get_main_queue(), {
+                    do {
+                        let search_results_array = try NSJSONSerialization.JSONObjectWithData(response.data!, options: []) as! Array<Dictionary<NSObject, AnyObject>>
+                        let dictionary = search_results_array
+                        if dictionary.count == 0 {
+                            
+                            self.unavailable = true
+                            NSNotificationCenter.defaultCenter().postNotificationName("availability", object: self)
+                            
+                        } else {
+                            self.unavailable = false
+                            NSNotificationCenter.defaultCenter().postNotificationName("availability", object: self)
+                        }
+                        
+                        for i in 0..<dictionary.count {
+                            let newBook = Book(seller: dictionary[i]["seller"] as! String, price: dictionary[i]["price"] as! String, location: dictionary[i]["location"] as! String)
+                            
+                            switch self.bookType {
+                            case "hardcover":
+                                self.hardcoverSearchResults += [newBook]
+                                break
+                            case "paperback":
+                                self.paperbackSearchResults += [newBook]
+                                break
+                            default:
+                                break
+                            }
+                            if i == dictionary.count-1{
+                                NSNotificationCenter.defaultCenter().postNotificationName("loading", object: self)
+                            }
+                        }
+                    } catch {
+                        
+                    }
+                    self.tableView.reloadData()
+                })
+        })
+       
     }
 
 }
