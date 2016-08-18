@@ -18,6 +18,8 @@ class SearchResultsTableViewController: UITableViewController {
     var pageNumber:Int = 1
     
     var device_token:String!
+    var cache:NSCache!
+    var indicator:UIActivityIndicatorView!
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -27,6 +29,11 @@ class SearchResultsTableViewController: UITableViewController {
         
         NSNotificationCenter.defaultCenter().addObserver(self, selector: #selector(self.loadSearchData), name: "loadSearchData", object: nil)
         
+        self.cache = NSCache()
+        self.indicator = UIActivityIndicatorView(activityIndicatorStyle: .Gray)
+        self.indicator.center = self.view.center
+        self.view.addSubview(self.indicator)
+        self.indicator.startAnimating()
         self.requestSearch()
     }
     
@@ -115,11 +122,13 @@ extension SearchResultsTableViewController {
                             
                             dispatch_async(dispatch_get_main_queue()){
                                 newBook.image = image
+                                self.cache.setObject(image!, forKey: newBook._link!)
                                 self.tableView.reloadData()
                             }
                             
                         })
                     }
+                    self.indicator.stopAnimating()
                     //})
                 } catch {
                     print(error)

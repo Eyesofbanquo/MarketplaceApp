@@ -41,7 +41,7 @@ class BookDetailViewController: UIViewController {
         self.locationManager = CLLocationManager()
         self.locationManager.delegate = self
         self._mapView.delegate = self
-        self.locationManager.desiredAccuracy = kCLLocationAccuracyBest
+        self.locationManager.desiredAccuracy = kCLLocationAccuracyBestForNavigation
         self.locationManager.requestWhenInUseAuthorization()
         self.locationManager.startUpdatingLocation()
         
@@ -133,7 +133,8 @@ extension BookDetailViewController: CLLocationManagerDelegate {
                     self.region = pm.region!
                     
                     self.location = pm.location!
-                    
+                    //self.centerMapOnLocation(self.location)
+
                 
                     if self.currentLocationSet == false {
                         
@@ -142,7 +143,7 @@ extension BookDetailViewController: CLLocationManagerDelegate {
                         
                         //Use MKLocalSearchRequest to find the location information from the provided location string for a given book
                         let request = MKLocalSearchRequest()
-                        request.naturalLanguageQuery = "Half price books near me"
+                        request.naturalLanguageQuery = "Half price books"
                         request.region = MKCoordinateRegion(center: self.location.coordinate, span: MKCoordinateSpan(latitudeDelta: self.regionRadius * 2.0, longitudeDelta: self.regionRadius * 2.0))
                         let search = MKLocalSearch(request: request)
                         
@@ -154,8 +155,6 @@ extension BookDetailViewController: CLLocationManagerDelegate {
                                 self._mapView.addAnnotation(marker)
                             }
                         })
-                        
-                        //self.locationManager.stopUpdatingLocation()
                     }
                     
                     
@@ -203,7 +202,7 @@ extension BookDetailViewController:MKMapViewDelegate{
         let marker = view.annotation as! Marker
         let placename = marker.title!
         
-        let ac = UIAlertController(title: placename, message: "Call the store to check if item is still in stock"/*marker.phoneNumber*/, preferredStyle: .Alert)
+        let ac = UIAlertController(title: placename, message: "Call to Reserve Book", preferredStyle: .Alert)
         ac.addAction(UIAlertAction(title: "Call", style: .Default, handler: {
             action in
             var editedNumber = ""

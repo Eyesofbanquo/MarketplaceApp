@@ -19,15 +19,22 @@ class BookResultsContainer: UIViewController {
     var bookTitle:String!
     var bookType:String = "hardcover"
     var bookResultsTableViewController:BookResultsTableViewController!
+    var indicator:UIActivityIndicatorView!
     override func viewDidLoad() {
         super.viewDidLoad()
         self.title = self.bookTitle
         
+        self.indicator = UIActivityIndicatorView(activityIndicatorStyle: UIActivityIndicatorViewStyle.Gray)
+        self.indicator.center = self.view.center
+        self.indicator.hidesWhenStopped = true
+        self.view.addSubview(self.indicator)
+        self.indicator.startAnimating()
         
     }
     
     override func viewDidAppear(animated: Bool) {
         super.viewDidAppear(animated)
+        
         
         /*if self.bookResultsTableViewController != nil {
             self.bookResultsTableViewController.tableView.reloadData()
@@ -50,16 +57,16 @@ class BookResultsContainer: UIViewController {
             let app_delegate = UIApplication.sharedApplication().delegate as! AppDelegate
             self.bookResultsTableViewController.device_token = app_delegate.deviceToken!
             
-            self.bookResultsTableViewController.postSearchData("hardcover")
+            self.bookResultsTableViewController.postSearchData("hardcover", currentPage: 0)
             NSNotificationCenter.defaultCenter().addObserver(self, selector: #selector(self.checkAvailability), name: "availability", object: nil)
-            NSNotificationCenter.defaultCenter().addObserver(self, selector: #selector(self.loadingView), name: "loading", object: nil)
+            NSNotificationCenter.defaultCenter().addObserver(self, selector: #selector(self.stopAnimatingIndicatorView), name: "stopAnimatingIndicatorView", object: nil)
             
             self.bookResultsTableViewController._bookTypeSegmentedControl = self._bookTypeSegmentedControl  
             }
     }
     
-    func loadingView(){
-        self._loadingView.hidden = true
+    func stopAnimatingIndicatorView(){
+        self.indicator.stopAnimating()
     }
     
     func checkAvailability(){
@@ -82,22 +89,38 @@ extension BookResultsContainer {
         switch (sender as! UISegmentedControl).selectedSegmentIndex {
         case 0:
             if self.bookResultsTableViewController.hardcoverSearchResults.count == 0 {
-                self._loadingView.hidden = false
+                //self._loadingView.hidden = false
                 self.bookResultsTableViewController.bookType = "hardcover"
-                self.bookResultsTableViewController.postSearchData("hardcover")
+                if self.bookResultsTableViewController.searching == false {
+                    self.indicator.startAnimating()
+                    self.bookResultsTableViewController.searching = true
+                    self.bookResultsTableViewController.postSearchData("hardcover", currentPage: self.bookResultsTableViewController.currentPageHardcover)
+                }
+                
                 self.bookResultsTableViewController.tableView.reloadData()
 
                 
+            } else {
+                self._unavailableView.hidden = true
             }
+            self.bookResultsTableViewController.tableView.reloadData()
             break
         case 1:
             if self.bookResultsTableViewController.paperbackSearchResults.count == 0 {
-                self._loadingView.hidden = false
+                //self.bookResultsTableViewController.searching = false
                 self.bookResultsTableViewController.bookType = "paperback"
-                self.bookResultsTableViewController.postSearchData("paperback")
+                if self.bookResultsTableViewController.searching == false {
+                    self.indicator.startAnimating()
+                    self.bookResultsTableViewController.searching = true
+                    self.bookResultsTableViewController.postSearchData("paperback", currentPage: 0)
+                }
+                
                 self.bookResultsTableViewController.tableView.reloadData()
 
+            } else {
+                self._unavailableView.hidden = true
             }
+            self.bookResultsTableViewController.tableView.reloadData()
             break
         default:
             break

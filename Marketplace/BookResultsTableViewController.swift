@@ -22,23 +22,31 @@ class BookResultsTableViewController: UITableViewController {
     var unavailable:Bool = false
     var hardcoverSearchResults:[Book] = []
     var paperbackSearchResults:[Book] = []
+    var currentPageHardcover:Int = 0
+    var currentPagePaperback:Int = 0
+    var searching:Bool = false
     //var audiobookSearchResults:NSObject!
     
     var device_token:String!
+    var indicator:UIActivityIndicatorView!
     
     override func viewDidLoad() {
         super.viewDidLoad()
         self.bookType = "hardcover"
 
         NSNotificationCenter.defaultCenter().addObserver(self, selector: #selector(self.loadSearchData), name: "loadBookData", object: nil)
+        
+        
     }
     
     override func viewWillAppear(animated:Bool){
         super.viewWillAppear(animated)
         self.title = self.bookTitle
+        
 
     }
-
+    
+    
     override func didReceiveMemoryWarning() {
         super.didReceiveMemoryWarning()
         // Dispose of any resources that can be recreated.
@@ -67,6 +75,21 @@ class BookResultsTableViewController: UITableViewController {
         default:
             return 0
         }
+    }
+    
+    override func tableView(tableView: UITableView, willDisplayCell cell: UITableViewCell, forRowAtIndexPath indexPath: NSIndexPath) {
+        if self.bookType == "hardcover" && (self.searching == false && indexPath.row == self.hardcoverSearchResults.count - 1) {
+            self.searching = true
+            self.currentPageHardcover = self.currentPageHardcover + 1
+            self.postSearchData("hardcover", currentPage: self.currentPageHardcover)
+            
+        } else if self.bookType == "paperback" && (self.searching == false && indexPath.row == self.paperbackSearchResults.count - 1) {
+            self.searching = true
+            self.currentPageHardcover = self.currentPagePaperback + 1
+            self.postSearchData("hardcover", currentPage: self.currentPagePaperback)
+        }
+        
+        
     }
 
     
@@ -207,23 +230,22 @@ extension BookResultsTableViewController {
     /* The search_results_array returns JSON with 3 keys - Hardcover, Paperback, Audiobook
         In each Key there is an array that holds the book information (Seller, Price, Location) */
     
-    func postSearchData(bookType:String){
+    func postSearchData(bookType:String, currentPage:Int){
         let searchURL = "https://fathomless-gorge-53738.herokuapp.com/book"
         dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), {
-            Alamofire.request(.POST, searchURL, parameters: ["link":self.bookLink, "book_type":bookType, "device_id":self.device_token])
+        Alamofire.request(.POST, searchURL, parameters: ["link":self.bookLink, "book_type":bookType, "device_id":self.device_token, "current_page":currentPage])
         })
         
     }
     func loadSearchData(){
         let searchURL = "https://fathomless-gorge-53738.herokuapp.com/book"
-            Alamofire.request(.GET, searchURL, parameters: ["device_id":self.device_token]).responseJSON(completionHandler: {
+            Alamofire.request(.GET, searchURL, parameters: ["device_id":self.device_token, "book_type":self.bookType]).responseJSON(completionHandler: {
                 response in
                 dispatch_async(dispatch_get_main_queue(), {
                     do {
                         let search_results_array = try NSJSONSerialization.JSONObjectWithData(response.data!, options: []) as! Array<Dictionary<NSObject, AnyObject>>
                         let dictionary = search_results_array
                         if dictionary.count == 0 {
-                            
                             self.unavailable = true
                             NSNotificationCenter.defaultCenter().postNotificationName("availability", object: self)
                             
@@ -232,25 +254,67 @@ extension BookResultsTableViewController {
                             NSNotificationCenter.defaultCenter().postNotificationName("availability", object: self)
                         }
                         
+                        
                         for i in 0..<dictionary.count {
-                            let newBook = Book(seller: dictionary[i]["seller"] as! String, price: dictionary[i]["price"] as! String, location: dictionary[i]["location"] as! String)
+                            var seller:String
+                            var price:String
+                            var location:String
+                            
+                            if dictionary[i]["seller"] as? String != nil{
+                                seller = dictionary[i]["seller"] as! String
+                                
+                            } else if dictionary[i]["seller"] as? String == "" {
+                                continue
+                            } else {
+                                continue
+                            }
+                            
+                            if dictionary[i]["price"] as? String != nil {
+                                price = dictionary[i]["price"] as! String
+                            } else {
+                                price = "Price is currently unavailable"
+                            }
+                            
+                            if dictionary[i]["location"] as? String != nil {
+                                location = dictionary[i]["location"] as! String
+                            } else {
+                                location = "Location is unavailable"
+                            }
+                            
+                            let newBook = Book(seller: seller, price: price, location: location)
                             
                             switch self.bookType {
                             case "hardcover":
                                 self.hardcoverSearchResults += [newBook]
+                                self.tableView.reloadData()
                                 break
                             case "paperback":
                                 self.paperbackSearchResults += [newBook]
+                                self.tableView.reloadData()
                                 break
                             default:
                                 break
                             }
                             if i == dictionary.count-1{
-                                NSNotificationCenter.defaultCenter().postNotificationName("loading", object: self)
+                                self.searching = false
+                            NSNotificationCenter.defaultCenter().postNotificationName("stopAnimatingIndicatorView", object: self)
+                                self.tableView.separatorStyle = UITableViewCellSeparatorStyle.SingleLine
+                                
                             }
+                            
                         }
+                    NSNotificationCenter.defaultCenter().postNotificationName("stopAnimatingIndicatorView", object: self)
                     } catch {
-                        
+                        let alert = UIAlertController(title: "Retry", message: "Try loading data again?", preferredStyle: .Alert)
+                        alert.addAction(UIAlertAction(title: "Ok", style: .Default, handler: {
+                            action in
+                            self.loadSearchData()
+                        }))
+                        alert.addAction(UIAlertAction(title: "Cancel", style: .Default, handler: {
+                            alert in
+                            self.navigationController?.popViewControllerAnimated(true)
+                        }))
+                        self.presentViewController(alert, animated: true, completion: nil)
                     }
                     self.tableView.reloadData()
                 })

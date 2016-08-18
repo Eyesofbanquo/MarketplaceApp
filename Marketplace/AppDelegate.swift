@@ -15,6 +15,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     var window: UIWindow?
     var deviceToken:String?
 
+    
 
     func application(application: UIApplication, didFinishLaunchingWithOptions launchOptions: [NSObject: AnyObject]?) -> Bool {
         
@@ -130,18 +131,44 @@ extension AppDelegate {
     }
     
     func application(application: UIApplication, didReceiveRemoteNotification userInfo: [NSObject : AnyObject]) {
-        print(userInfo)
+        ///print(userInfo)
+        let navigationController = self.window?.rootViewController as? UINavigationController
+        
         if let done = (userInfo["loadSearchData"] as? Int){
             if done == 1 {
                 //This means the search is done
                 NSNotificationCenter.defaultCenter().postNotificationName("loadSearchData", object: nil)
             }
         }
+        
         if let bookData = (userInfo["loadBookData"] as? Int){
-            if bookData == 1 {
-                NSNotificationCenter.defaultCenter().postNotificationName("loadBookData", object: nil)
+            if application.applicationState == UIApplicationState.Active{
+                for (index,controller) in (self.window?.rootViewController?.childViewControllers)!.enumerate() {
+                    let nav = controller as? UINavigationController
+                    if index == 0 {
+                        if (nav!.topViewController!.isKindOfClass(BookResultsContainer)){
+                            if bookData == 1 {
+                                NSNotificationCenter.defaultCenter().postNotificationName("loadBookData", object: nil)
+                            }
+                        }
+                    } else {
+                        if (nav!.topViewController!.isKindOfClass(BookResultsContainer)){
+                            if bookData == 1 {
+                                NSNotificationCenter.defaultCenter().postNotificationName("loadBookData", object: nil)
+                            }
+                        }
+                    }
+                    
+                }
+                
+            } else{
+                if bookData == 1 {
+                    NSNotificationCenter.defaultCenter().postNotificationName("loadBookData", object: nil)
+                }
             }
+            
         }
+        
         if let apiKey = (userInfo["api"] as? Int){
             if apiKey == 1 {
                 NSNotificationCenter.defaultCenter().postNotificationName("getApiKey", object: nil)
